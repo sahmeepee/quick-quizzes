@@ -38,7 +38,7 @@
       height: 450px;
       margin: 20px auto;
       display: none;
-      background: #334406;
+      background: #020617;
       border-radius: 12px;
     }
     #score {
@@ -48,7 +48,7 @@
   </style>
 </head>
 <body>
-  <h1>Where's That To?</h1>
+  <h1 id="title">Where's That To?</h1>
   <h2>Is it north or south of Bristol?</h2>
 
   <div id="game" class="card">
@@ -66,7 +66,6 @@
 <script>
 const BRISTOL_LAT = 51.4545;
 
-// Expanded to ~50 well-known cities near-ish in latitude
 const cities = [
   { name: "Amsterdam", lat: 52.3676, lon: 4.9041 },
   { name: "Berlin", lat: 52.52, lon: 13.405 },
@@ -124,7 +123,6 @@ let index = 0;
 let score = 0;
 let results = [];
 
-// IMPORTANT FIX: use a true equirectangular world map image
 const worldImg = new Image();
 worldImg.crossOrigin = "anonymous";
 worldImg.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Equirectangular_projection_SW.jpg/1920px-Equirectangular_projection_SW.jpg";
@@ -141,6 +139,7 @@ function startGame() {
   document.getElementById("map").style.display = "none";
   document.getElementById("startBtn").style.display = "none";
   document.getElementById("buttons").style.display = "block";
+  document.getElementById("score").style.display = "block"; // show during play
   nextCity();
 }
 
@@ -171,6 +170,7 @@ function endGame() {
   document.getElementById("buttons").style.display = "none";
   document.getElementById("startBtn").style.display = "inline-block";
   document.getElementById("startBtn").textContent = "Play Again";
+  document.getElementById("score").style.display = "none"; // hide running score
   drawMap();
 }
 
@@ -216,4 +216,3 @@ function drawMap() {
 </script>
 </body>
 </html>
-
