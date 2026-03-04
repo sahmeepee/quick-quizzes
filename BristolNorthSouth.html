@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>North or South of Bristol?</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #0f172a;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+    .card {
+      background: #111827;
+      padding: 24px;
+      border-radius: 16px;
+      max-width: 520px;
+      margin: 40px auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    button {
+      margin: 10px;
+      padding: 12px 24px;
+      font-size: 18px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+    }
+    button:hover { background: #1d4ed8; }
+    #map {
+      width: 100%;
+      max-width: 900px;
+      height: 450px;
+      margin: 20px auto;
+      display: none;
+      background: #334406;
+      border-radius: 12px;
+    }
+    #score {
+      font-size: 22px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>North or South of Bristol?</h1>
+
+  <div id="game" class="card">
+    <h2 id="cityName">Press Start</h2>
+    <div id="buttons" style="display:none;">
+      <button onclick="guess('north')">More Northerly</button>
+      <button onclick="guess('south')">More Southerly</button>
+    </div>
+    <button id="startBtn" onclick="startGame()">Start Game</button>
+    <div id="score"></div>
+  </div>
+
+  <canvas id="map"></canvas>
+
+<script>
+const BRISTOL_LAT = 51.4545;
+
+// Expanded to ~50 well-known cities near-ish in latitude
+const cities = [
+  { name: "Amsterdam", lat: 52.3676, lon: 4.9041 },
+  { name: "Berlin", lat: 52.52, lon: 13.405 },
+  { name: "Paris", lat: 48.8566, lon: 2.3522 },
+  { name: "Vancouver", lat: 49.2827, lon: -123.1207 },
+  { name: "Prague", lat: 50.0755, lon: 14.4378 },
+  { name: "Warsaw", lat: 52.2297, lon: 21.0122 },
+  { name: "Brussels", lat: 50.8503, lon: 4.3517 },
+  { name: "Munich", lat: 48.1351, lon: 11.582 },
+  { name: "Vienna", lat: 48.2082, lon: 16.3738 },
+  { name: "Seattle", lat: 47.6062, lon: -122.3321 },
+  { name: "Zurich", lat: 47.3769, lon: 8.5417 },
+  { name: "Budapest", lat: 47.4979, lon: 19.0402 },
+  { name: "Copenhagen", lat: 55.6761, lon: 12.5683 },
+  { name: "Hamburg", lat: 53.5511, lon: 9.9937 },
+  { name: "Dublin", lat: 53.3498, lon: -6.2603 },
+  { name: "Manchester", lat: 53.4808, lon: -2.2426 },
+  { name: "Birmingham", lat: 52.4862, lon: -1.8904 },
+  { name: "Rotterdam", lat: 51.9244, lon: 4.4777 },
+  { name: "Cologne", lat: 50.9375, lon: 6.9603 },
+  { name: "Frankfurt", lat: 50.1109, lon: 8.6821 },
+  { name: "Krakow", lat: 50.0647, lon: 19.945 },
+  { name: "Lviv", lat: 49.8397, lon: 24.0297 },
+  { name: "Lyon", lat: 45.764, lon: 4.8357 },
+  { name: "Geneva", lat: 46.2044, lon: 6.1432 },
+  { name: "Milan", lat: 45.4642, lon: 9.19 },
+  { name: "Turin", lat: 45.0703, lon: 7.6869 },
+  { name: "Bordeaux", lat: 44.8378, lon: -0.5792 },
+  { name: "Portland", lat: 45.5152, lon: -122.6784 },
+  { name: "Boston", lat: 42.3601, lon: -71.0589 },
+  { name: "Toronto", lat: 43.6532, lon: -79.3832 },
+  { name: "Montreal", lat: 45.5017, lon: -73.5673 },
+  { name: "Ottawa", lat: 45.4215, lon: -75.6972 },
+  { name: "Minneapolis", lat: 44.9778, lon: -93.265 },
+  { name: "Chicago", lat: 41.8781, lon: -87.6298 },
+  { name: "Rome", lat: 41.9028, lon: 12.4964 },
+  { name: "Madrid", lat: 40.4168, lon: -3.7038 },
+  { name: "Barcelona", lat: 41.3874, lon: 2.1686 },
+  { name: "Lisbon", lat: 38.7223, lon: -9.1393 },
+  { name: "New York", lat: 40.7128, lon: -74.006 },
+  { name: "Beijing", lat: 39.9042, lon: 116.4074 },
+  { name: "Seoul", lat: 37.5665, lon: 126.978 },
+  { name: "Tokyo", lat: 35.6762, lon: 139.6503 },
+  { name: "Sapporo", lat: 43.0618, lon: 141.3545 },
+  { name: "Moscow", lat: 55.7558, lon: 37.6173 },
+  { name: "St Petersburg", lat: 59.9311, lon: 30.3609 },
+  { name: "Oslo", lat: 59.9139, lon: 10.7522 },
+  { name: "Stockholm", lat: 59.3293, lon: 18.0686 },
+  { name: "Helsinki", lat: 60.1699, lon: 24.9384 },
+  { name: "Reykjavik", lat: 64.1466, lon: -21.9426 }
+];
+
+let gameCities = [];
+let index = 0;
+let score = 0;
+let results = [];
+
+// IMPORTANT FIX: use a true equirectangular world map image
+const worldImg = new Image();
+worldImg.crossOrigin = "anonymous";
+worldImg.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Equirectangular_projection_SW.jpg/1920px-Equirectangular_projection_SW.jpg";
+
+function shuffle(arr) {
+  return arr.sort(() => Math.random() - 0.5);
+}
+
+function startGame() {
+  gameCities = shuffle([...cities]).slice(0, 10);
+  index = 0;
+  score = 0;
+  results = [];
+  document.getElementById("map").style.display = "none";
+  document.getElementById("startBtn").style.display = "none";
+  document.getElementById("buttons").style.display = "block";
+  nextCity();
+}
+
+function nextCity() {
+  if (index >= gameCities.length) {
+    endGame();
+    return;
+  }
+  document.getElementById("cityName").textContent = gameCities[index].name;
+  document.getElementById("score").textContent = `Score: ${score} / ${gameCities.length}`;
+}
+
+function guess(direction) {
+  const city = gameCities[index];
+  const isNorth = city.lat > BRISTOL_LAT;
+  const correct = (direction === "north" && isNorth) ||
+                  (direction === "south" && !isNorth);
+
+  if (correct) score++;
+
+  results.push({ ...city, correct });
+  index++;
+  nextCity();
+}
+
+function endGame() {
+  document.getElementById("cityName").textContent = `Final Score: ${score} / ${gameCities.length}`;
+  document.getElementById("buttons").style.display = "none";
+  document.getElementById("startBtn").style.display = "inline-block";
+  document.getElementById("startBtn").textContent = "Play Again";
+  drawMap();
+}
+
+function drawMap() {
+  const canvas = document.getElementById("map");
+  const ctx = canvas.getContext("2d");
+  canvas.style.display = "block";
+
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+
+  function drawAll() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(worldImg, 0, 0, canvas.width, canvas.height);
+
+    function project(lat, lon) {
+      const x = (lon + 180) * (canvas.width / 360);
+      const y = (90 - lat) * (canvas.height / 180);
+      return { x, y };
+    }
+
+    results.forEach(city => {
+      const { x, y } = project(city.lat, city.lon);
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = city.correct ? "#22c55e" : "#ef4444";
+      ctx.fill();
+    });
+
+    const b = project(BRISTOL_LAT, -2.5879);
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "#3b82f6";
+    ctx.fill();
+  }
+
+  if (worldImg.complete) {
+    drawAll();
+  } else {
+    worldImg.onload = drawAll;
+  }
+}
+</script>
+</body>
+</html>
